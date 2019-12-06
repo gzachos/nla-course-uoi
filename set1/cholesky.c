@@ -8,7 +8,8 @@ void   free_arrays(int **a1, int **a2, int *b1, int *b2, int n);
 int   *alloc_1d_array(int n);
 int  **alloc_2d_array(int n);
 void   free_2d_array(int **arr, int n);
-void   write_2d_array(char * filename, int **arr, int n);
+void   write_2d_array(char *filename, int **arr, int n);
+void   write_1d_array(char *filename, int *arr, int n);
 
 
 int main(void)
@@ -25,7 +26,7 @@ int main(void)
 	}
 
 	/* Init b1 */
-	b1[0] = b1[n-1]   = 3;
+	b1[0] = b1[n-1] = 3;
 	b1[1] = b1[n-2] = -1;
 
 
@@ -53,6 +54,8 @@ int main(void)
 
 	write_2d_array("a1.txt", a1, n);
 	write_2d_array("a2.txt", a2, n);
+	write_1d_array("b1.txt", b1, n);
+	write_1d_array("b2.txt", b2, n);
 
 	free_arrays(a1, a2, b1, b2, n);
 
@@ -174,3 +177,22 @@ void write_2d_array(char *filename, int **arr, int n)
 	fclose(outfile);
 }
 
+
+void write_1d_array(char *filename, int *arr, int n)
+{
+	int i;
+
+	FILE *outfile = fopen(filename, "w");
+	if (!outfile)
+	{
+		perror("fopen");
+		return;
+	}
+
+	for (i = 0; i < n; i++)
+	{
+		fprintf(outfile, "%2d\n", arr[i]);
+	}
+
+	fclose(outfile);
+}
