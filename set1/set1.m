@@ -23,8 +23,9 @@ A1
 B1
 
 L = cholesky(A1, n)
-LT = L';
+LT = L'
 A = L*LT;
 
 Y = forward_substitution(L, B1, n)
+X = back_substitution(LT, Y, n)
 

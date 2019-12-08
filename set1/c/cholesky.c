@@ -13,6 +13,8 @@ void     write_2d_matrix(char *filename, float **arr, int n);
 void     write_1d_matrix(char *filename, float *arr, int n);
 float  **cholesky_decomposition(float **a, int n);
 float   *forward_substitution(float **l, float *b, int n);
+float   *back_substitution(float **l, float *b, int n);
+float  **transpose(float **arr, int n);
 
 
 int main(void)
@@ -64,8 +66,8 @@ int main(void)
 	write_1d_matrix("b2.txt", b2, n);
 
 	l1 = cholesky_decomposition(a1, n);
-
-	printf("### L\n");
+#if 1
+	printf("\nL =\n\n");
 	for (i = 0; i < n; i++)
 	{
 		for (j = 0; j < n; j++)
@@ -73,7 +75,8 @@ int main(void)
 		printf("\n");
 	}
 	printf("\n");
-
+#endif
+#if 0
 	a = alloc_2d_matrix(n);
 
 	/* Calculate L * L-transpose */
@@ -89,7 +92,7 @@ int main(void)
 		}
 	}
 
-	printf("### A = L * L-transpose\n");
+	printf("\nA = L * L-transpose\n\n");
 	for (i = 0; i < n; i++)
 	{
 		for (j = 0; j < n; j++)
@@ -97,19 +100,47 @@ int main(void)
 		printf("\n");
 	}
 	printf("\n");
+#endif
 
 	/* L*y=b (forward substitution) */
-	float *y = forward_substitution(l1, b1, n);
-
-	printf("### Y\n");
+	float *y1 = forward_substitution(l1, b1, n);
+#if 1
+	printf("\nY =\n\n");
 	for (i = 0; i < n; i++)
-		printf("%f\n", y[i]);
+		printf("%10f\n", y1[i]);
+#endif
+	float **lt = transpose(l1, n);
+#if 0
+	printf("\nL-transpose\n\n");
+	for (i = 0; i < n; i++)
+	{
+		for (j = 0; j < n; j++)
+			printf("%10f ", lt[i][j]);
+		printf("\n");
+	}
+	printf("\n");
+#endif
+	/* LT*x=y (back substitution) */
+	float *x1 = back_substitution(lt, y1, n);
+#if 1
+	printf("\nX =\n\n");
+	for (i = 0; i < n; i++)
+		printf("%10f\n", x1[i]);
 
 	free_matrices(a1, a2, b1, b2, n);
-
+#endif
 	return EXIT_SUCCESS;
 }
 
+float **transpose(float **arr, int n)
+{
+	float **trn = alloc_2d_matrix(n);
+	int i, j;
+	for (i = 0; i < n; i++)
+		for (j = 0; j < n; j++)
+			trn[i][j] = arr[j][i];
+	return trn;
+}
 
 float *forward_substitution(float **l, float *b, int n)
 {
@@ -119,9 +150,26 @@ float *forward_substitution(float **l, float *b, int n)
 	for (i = 0; i < n; i++)
 	{
 		sum = b[i];
-		for (k = 0; k <= i-1; k++) 
+		for (k = 0; k < i; k++)
 			sum -= l[i][k] * y[k];
 		y[i] = sum / l[i][i];
+	}
+
+	return y;
+}
+
+
+float *back_substitution(float **l, float *b, int n)
+{
+	float *y = alloc_1d_matrix(n), sum;
+	int i, k;
+
+	for (i = n; i >= 1; i--)
+	{
+		sum = b[i-1];
+		for (k = n; k >= i+1; k--)
+			sum -= l[i-1][k-1] * y[k-1];
+		y[i-1] = sum / l[i-1][i-1];
 	}
 
 	return y;
