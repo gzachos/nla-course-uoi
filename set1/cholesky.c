@@ -3,13 +3,14 @@
 #include <errno.h>
 
 /* Function Prototypes */
-int    alloc_arrays(int ***a1, int ***a2, int **b1, int **b2, int n);
-void   free_arrays(int **a1, int **a2, int *b1, int *b2, int n);
-int   *alloc_1d_array(int n);
-int  **alloc_2d_array(int n);
-void   free_2d_array(int **arr, int n);
-void   write_2d_array(char *filename, int **arr, int n);
-void   write_1d_array(char *filename, int *arr, int n);
+int    alloc_matrices(int ***a1, int ***a2, int **b1, int **b2, int n);
+void   free_matrices(int **a1, int **a2, int *b1, int *b2, int n);
+int   *alloc_1d_matrix(int n);
+int  **alloc_2d_matrix(int n);
+int  **alloc_lower_triangular_matrix(int n);
+void   free_2d_matrix(int **arr, int n);
+void   write_2d_matrix(char *filename, int **arr, int n);
+void   write_1d_matrix(char *filename, int *arr, int n);
 
 
 int main(void)
@@ -20,7 +21,7 @@ int main(void)
 	     *b1 = NULL,
 	     *b2 = NULL;
 
-	if (alloc_arrays(&a1, &a2, &b1, &b2, n) != 0)
+	if (alloc_matrices(&a1, &a2, &b1, &b2, n) != 0)
 	{
 		return EXIT_FAILURE;
 	}
@@ -52,43 +53,43 @@ int main(void)
 		}
 	}
 
-	write_2d_array("a1.txt", a1, n);
-	write_2d_array("a2.txt", a2, n);
-	write_1d_array("b1.txt", b1, n);
-	write_1d_array("b2.txt", b2, n);
+	write_2d_matrix("a1.txt", a1, n);
+	write_2d_matrix("a2.txt", a2, n);
+	write_1d_matrix("b1.txt", b1, n);
+	write_1d_matrix("b2.txt", b2, n);
 
-	free_arrays(a1, a2, b1, b2, n);
+	free_matrices(a1, a2, b1, b2, n);
 
 	return EXIT_SUCCESS;
 }
 
 
-int alloc_arrays(int ***a1, int ***a2, int **b1, int **b2, int n)
+int alloc_matrices(int ***a1, int ***a2, int **b1, int **b2, int n)
 {
-	*a1 = alloc_2d_array(n);
+	*a1 = alloc_2d_matrix(n);
 	if (!(**a1))
 		return 1;
 
-	*a2 = alloc_2d_array(n);
+	*a2 = alloc_2d_matrix(n);
 	if (!(*a2))
 	{
-		free_2d_array(*a1, n);
+		free_2d_matrix(*a1, n);
 		return 1;
 	}
 
-	*b1 = alloc_1d_array(n);
+	*b1 = alloc_1d_matrix(n);
 	if (!(*b1))
 	{
-		free_2d_array(*a1, n);
-		free_2d_array(*a2, n);
+		free_2d_matrix(*a1, n);
+		free_2d_matrix(*a2, n);
 		return 1;
 	}
 
-	*b2 = alloc_1d_array(n);
+	*b2 = alloc_1d_matrix(n);
 	if (!(*b2))
 	{
-		free_2d_array(*a1, n);
-		free_2d_array(*a2, n);
+		free_2d_matrix(*a1, n);
+		free_2d_matrix(*a2, n);
 		free(b1);
 		return 1;
 	}
@@ -97,7 +98,7 @@ int alloc_arrays(int ***a1, int ***a2, int **b1, int **b2, int n)
 }
 
 
-int **alloc_2d_array(int n)
+int **alloc_2d_matrix(int n)
 {
 	int i, j;
 	int **arr = (int **) calloc(n, sizeof(int *));
@@ -124,7 +125,35 @@ int **alloc_2d_array(int n)
 }
 
 
-int *alloc_1d_array(int n)
+int  **alloc_lower_triangular_matrix(int n)
+{
+	int i, j;
+
+	int **arr = (int **) malloc(n * sizeof(int *));
+
+	if (!arr)
+	{
+		perror("malloc");
+		return NULL;
+	}
+
+	for (i = 0; i < n; i++)
+	{
+		arr[i] = (int *) calloc(i+1, sizeof(int));
+		if (!arr[i])
+		{
+			perror("calloc");
+			for (j = 0; j < i; j++)
+				free(arr[j]);
+			free(arr);
+			return NULL;
+		}
+	}
+	return arr;
+}
+
+
+int *alloc_1d_matrix(int n)
 {
 	int *arr = (int *) calloc(n, sizeof(int));
 
@@ -138,7 +167,7 @@ int *alloc_1d_array(int n)
 }
 
 
-void free_2d_array(int **arr, int n)
+void free_2d_matrix(int **arr, int n)
 {
 	int i;
 	for (i = 0; i < n; i++)
@@ -147,16 +176,16 @@ void free_2d_array(int **arr, int n)
 }
 
 
-void free_arrays(int **a1, int **a2, int *b1, int *b2, int n)
+void free_matrices(int **a1, int **a2, int *b1, int *b2, int n)
 {
-	free_2d_array(a1, n);
-	free_2d_array(a2, n);
+	free_2d_matrix(a1, n);
+	free_2d_matrix(a2, n);
 	free(b1);
 	free(b2);
 }
 
 
-void write_2d_array(char *filename, int **arr, int n)
+void write_2d_matrix(char *filename, int **arr, int n)
 {
 	int i, j;
 
@@ -178,7 +207,7 @@ void write_2d_array(char *filename, int **arr, int n)
 }
 
 
-void write_1d_array(char *filename, int *arr, int n)
+void write_1d_matrix(char *filename, int *arr, int n)
 {
 	int i;
 
