@@ -12,15 +12,19 @@ void     free_2d_matrix(float **arr, int n);
 void     write_2d_matrix(char *filename, float **arr, int n);
 void     write_1d_matrix(char *filename, float *arr, int n);
 float  **cholesky_decomposition(float **a, int n);
+float   *forward_substitution(float **l, float *b, int n);
+
 
 int main(void)
 {
-	int i, j, n = 10;
+	int i, j, k, n = 10;
 	float **a1 = NULL,
 	      **a2 = NULL,
 	       *b1 = NULL,
 	       *b2 = NULL,
-	      **l1 = NULL;
+	      **l1 = NULL,
+	      **a  = NULL,
+	        sum;
 
 	if (alloc_matrices(&a1, &a2, &b1, &b2, n) != 0)
 	{
@@ -53,13 +57,14 @@ int main(void)
 		}
 	}
 
+	/* Write a1, a2, b1 and b2 to files */
 	write_2d_matrix("a1.txt", a1, n);
 	write_2d_matrix("a2.txt", a2, n);
 	write_1d_matrix("b1.txt", b1, n);
 	write_1d_matrix("b2.txt", b2, n);
 
 	l1 = cholesky_decomposition(a1, n);
-#if 1
+
 	printf("### L\n");
 	for (i = 0; i < n; i++)
 	{
@@ -68,10 +73,58 @@ int main(void)
 		printf("\n");
 	}
 	printf("\n");
-#endif
+
+	a = alloc_2d_matrix(n);
+
+	/* Calculate L * L-transpose */
+	for (i = 0; i < n; i++)
+	{
+		for (j = 0; j < n; j++)
+		{
+			sum = 0.0;
+			for (k = 0; k < n; k++) {
+				sum += l1[i][k] * l1[j][k];
+			}
+			a[i][j] = sum;
+		}
+	}
+
+	printf("### A = L * L-transpose\n");
+	for (i = 0; i < n; i++)
+	{
+		for (j = 0; j < n; j++)
+			printf("%10f ", a[i][j]);
+		printf("\n");
+	}
+	printf("\n");
+
+	/* L*y=b (forward substitution) */
+	float *y = forward_substitution(l1, b1, n);
+
+	printf("### Y\n");
+	for (i = 0; i < n; i++)
+		printf("%f\n", y[i]);
+
 	free_matrices(a1, a2, b1, b2, n);
 
 	return EXIT_SUCCESS;
+}
+
+
+float *forward_substitution(float **l, float *b, int n)
+{
+	float *y = alloc_1d_matrix(n), sum;
+	int i, k;
+
+	for (i = 0; i < n; i++)
+	{
+		sum = b[i];
+		for (k = 0; k <= i-1; k++) 
+			sum -= l[i][k] * y[k];
+		y[i] = sum / l[i][i];
+	}
+
+	return y;
 }
 
 
@@ -252,7 +305,7 @@ float  **cholesky_decomposition(float **a, int n)
 			{
 				sum -= l[i-1][k-1] * l[j-1][k-1];
 			}
-			l[i-1][j-1] = ((float)sum) / l[j-1][j-1];
+			l[i-1][j-1] = sum / l[j-1][j-1];
 		}
 		sum = a[i-1][i-1];
 		for (j = 1; j <= i-1; j++)
