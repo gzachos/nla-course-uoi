@@ -3,35 +3,121 @@
 #include <errno.h>
 #include <math.h>
 
+#define BUFF_SIZE	64
+
+#if 1
+	typedef double fptype;
+#else
+	typedef float fptype;
+#endif
+
 /* Function Prototypes */
-int       alloc_matrices(double ***a1, double ***a2, double **b1, double **b2, int n);
-void      free_matrices(double **a1, double **a2, double *b1, double *b2, int n);
-double   *alloc_1d_matrix(int n);
-double  **alloc_2d_matrix(int n);
-void      free_2d_matrix(double **arr, int n);
-void      write_2d_matrix(char *filename, double **arr, int n);
-void      write_1d_matrix(char *filename, double *arr, int n);
-double  **cholesky_decomposition(double **a, int n);
-double   *forward_substitution(double **l, double *b, int n);
-double   *back_substitution(double **l, double *b, int n);
-double  **transpose(double **arr, int n);
+int       alloc_matrices(fptype ***a1, fptype ***a2, fptype **b1, fptype **b2, int n);
+void      free_matrices(fptype **a1, fptype **a2, fptype *b1, fptype *b2, int n);
+fptype   *alloc_1d_matrix(int n);
+fptype  **alloc_2d_matrix(int n);
+void      free_2d_matrix(fptype **arr, int n);
+void      write_2d_matrix(char *filename, fptype **arr, int n);
+void      write_1d_matrix(char *filename, fptype *arr, int n);
+fptype  **cholesky_decomposition(fptype **a, int n);
+fptype   *forward_substitution(fptype **l, fptype *b, int n);
+fptype   *back_substitution(fptype **l, fptype *b, int n);
+fptype  **transpose(fptype **arr, int n);
+void      init_matrices(fptype **a1, fptype **a2, fptype *b1, fptype *b2, int n);
 
 
 int main(void)
 {
-	int i, j, k, n = 10000;
-	double **a1 = NULL,
-	       **a2 = NULL,
-	        *b1 = NULL,
-	        *b2 = NULL,
-	       **l1 = NULL,
-	       **a  = NULL,
+	int i, j, k, n = 10;
+	fptype **a1  = NULL, **a2  = NULL,
+	        *b1  = NULL,  *b2  = NULL,
+	        *x1  = NULL,  *x2  = NULL,
+	        *y1  = NULL,  *y2  = NULL,
+	       **l1  = NULL, **l2  = NULL,
+	       **lt1 = NULL, **lt2 = NULL,
+	       **ra1 = NULL, **ra2 = NULL,
 	         sum;
+	char filename[64];
 
 	if (alloc_matrices(&a1, &a2, &b1, &b2, n) != 0)
 	{
 		return EXIT_FAILURE;
 	}
+
+	/* Initialize matrices */
+	init_matrices(a1, a2, b1, b2, n);
+
+	/* Write a1, a2, b1 and b2 to files */
+#if 0
+	write_2d_matrix("a1.txt", a1, n);
+	write_2d_matrix("a2.txt", a2, n);
+	write_1d_matrix("b1.txt", b1, n);
+	write_1d_matrix("b2.txt", b2, n);
+#endif
+	l1 = cholesky_decomposition(a1, n);
+#if 1
+	ra1 = alloc_2d_matrix(n);
+
+	/* Calculate L * L-transpose */
+	for (i = 0; i < n; i++)
+	{
+		for (j = 0; j < n; j++)
+		{
+			for (k = 0, sum = 0.0; k < n; k++)
+				sum += l1[i][k] * l1[j][k];
+			ra1[i][j] = sum;
+		}
+	}
+
+	snprintf(filename, BUFF_SIZE, "ra1_%d.txt", n);
+	write_2d_matrix(filename, ra1, n);
+#endif
+
+	/* L*y=b (forward substitution) */
+	y1  = forward_substitution(l1, b1, n);
+	lt1 = transpose(l1, n);
+
+	/* LT*x=y (back substitution) */
+	x1 = back_substitution(lt1, y1, n);
+
+#if 0
+	printf("\nL =\n\n");
+	for (i = 0; i < n; i++)
+	{
+		for (j = 0; j < n; j++)
+			printf("%10f ", l1[i][j]);
+		printf("\n");
+	}
+	printf("\n");
+	printf("\nY =\n\n");
+	for (i = 0; i < n; i++)
+		printf("%10f\n", y1[i]);
+	printf("\nX =\n\n");
+	for (i = 0; i < n; i++)
+		printf("%10f\n", x1[i]);
+#endif
+
+	snprintf(filename, BUFF_SIZE, "l1_%d.txt", n);
+	write_2d_matrix(filename, l1, n);
+	snprintf(filename, BUFF_SIZE, "x1_%d.txt", n);
+	write_1d_matrix(filename, x1, n);
+	snprintf(filename, BUFF_SIZE, "y1_%d.txt", n);
+	write_1d_matrix(filename, y1, n);
+
+	free_2d_matrix(l1, n);  free_2d_matrix(l2, n);
+	free_2d_matrix(lt1, n); free_2d_matrix(lt2, n);
+	free_2d_matrix(ra1, n); free_2d_matrix(ra2, n);
+	free(y1); free(y2);
+	free(x1); free(x2);
+	free_matrices(a1, a2, b1, b2, n);
+
+	return EXIT_SUCCESS;
+}
+
+
+void init_matrices(fptype **a1, fptype **a2, fptype *b1, fptype *b2, int n)
+{
+	int i, j;
 
 	/* Init b1 */
 	b1[0] = b1[n-1] = 3;
@@ -58,83 +144,12 @@ int main(void)
 				a1[i][j] = a2[i][j] = 1;
 		}
 	}
-
-	/* Write a1, a2, b1 and b2 to files */
-	write_2d_matrix("a1.txt", a1, n);
-	write_2d_matrix("a2.txt", a2, n);
-	write_1d_matrix("b1.txt", b1, n);
-	write_1d_matrix("b2.txt", b2, n);
-
-	l1 = cholesky_decomposition(a1, n);
-#if 1
-	printf("\nL =\n\n");
-	for (i = 0; i < n; i++)
-	{
-		for (j = 0; j < n; j++)
-			printf("%10f ", l1[i][j]);
-		printf("\n");
-	}
-	printf("\n");
-#endif
-#if 0
-	a = alloc_2d_matrix(n);
-
-	/* Calculate L * L-transpose */
-	for (i = 0; i < n; i++)
-	{
-		for (j = 0; j < n; j++)
-		{
-			sum = 0.0;
-			for (k = 0; k < n; k++) {
-				sum += l1[i][k] * l1[j][k];
-			}
-			a[i][j] = sum;
-		}
-	}
-
-	printf("\nA = L * L-transpose\n\n");
-	for (i = 0; i < n; i++)
-	{
-		for (j = 0; j < n; j++)
-			printf("%10f ", a[i][j]);
-		printf("\n");
-	}
-	printf("\n");
-#endif
-
-	/* L*y=b (forward substitution) */
-	double *y1 = forward_substitution(l1, b1, n);
-#if 1
-	printf("\nY =\n\n");
-	for (i = 0; i < n; i++)
-		printf("%10f\n", y1[i]);
-#endif
-	double **lt = transpose(l1, n);
-#if 0
-	printf("\nL-transpose\n\n");
-	for (i = 0; i < n; i++)
-	{
-		for (j = 0; j < n; j++)
-			printf("%10f ", lt[i][j]);
-		printf("\n");
-	}
-	printf("\n");
-#endif
-	/* LT*x=y (back substitution) */
-	double *x1 = back_substitution(lt, y1, n);
-#if 1
-	printf("\nX =\n\n");
-	for (i = 0; i < n; i++)
-		printf("%10f\n", x1[i]);
-
-	free_matrices(a1, a2, b1, b2, n);
-#endif
-	return EXIT_SUCCESS;
 }
 
-double **transpose(double **arr, int n)
+
+fptype **transpose(fptype **arr, int n)
 {
-	double **trn = alloc_2d_matrix(n);
+	fptype **trn = alloc_2d_matrix(n);
 	int i, j;
 
 	for (i = 0; i < n; i++)
@@ -143,9 +158,10 @@ double **transpose(double **arr, int n)
 	return trn;
 }
 
-double *forward_substitution(double **l, double *b, int n)
+
+fptype *forward_substitution(fptype **l, fptype *b, int n)
 {
-	double *y = alloc_1d_matrix(n), sum;
+	fptype *y = alloc_1d_matrix(n), sum;
 	int i, k;
 
 	for (i = 0; i < n; i++)
@@ -160,9 +176,9 @@ double *forward_substitution(double **l, double *b, int n)
 }
 
 
-double *back_substitution(double **l, double *b, int n)
+fptype *back_substitution(fptype **l, fptype *b, int n)
 {
-	double *y = alloc_1d_matrix(n), sum;
+	fptype *y = alloc_1d_matrix(n), sum;
 	int i, k;
 
 	for (i = n; i >= 1; i--)
@@ -177,7 +193,7 @@ double *back_substitution(double **l, double *b, int n)
 }
 
 
-int alloc_matrices(double ***a1, double ***a2, double **b1, double **b2, int n)
+int alloc_matrices(fptype ***a1, fptype ***a2, fptype **b1, fptype **b2, int n)
 {
 	*a1 = alloc_2d_matrix(n);
 	if (!(**a1))
@@ -211,10 +227,10 @@ int alloc_matrices(double ***a1, double ***a2, double **b1, double **b2, int n)
 }
 
 
-double **alloc_2d_matrix(int n)
+fptype **alloc_2d_matrix(int n)
 {
 	int i, j;
-	double **arr = (double **) malloc(n * sizeof(double *));
+	fptype **arr = (fptype **) malloc(n * sizeof(fptype *));
 
 	if (!arr)
 	{
@@ -224,7 +240,7 @@ double **alloc_2d_matrix(int n)
 
 	for (i = 0; i < n; i++)
 	{
-		arr[i] = (double *) calloc(n, sizeof(double));
+		arr[i] = (fptype *) calloc(n, sizeof(fptype));
 		if (!arr[i])
 		{
 			perror("calloc");
@@ -238,36 +254,9 @@ double **alloc_2d_matrix(int n)
 }
 
 
-double  **alloc_lower_triangular_matrix(int n)
+fptype *alloc_1d_matrix(int n)
 {
-	int i, j;
-	double **arr = (double **) malloc(n * sizeof(double *));
-
-	if (!arr)
-	{
-		perror("malloc");
-		return NULL;
-	}
-
-	for (i = 0; i < n; i++)
-	{
-		arr[i] = (double *) calloc(i+1, sizeof(double));
-		if (!arr[i])
-		{
-			perror("calloc");
-			for (j = 0; j < i; j++)
-				free(arr[j]);
-			free(arr);
-			return NULL;
-		}
-	}
-	return arr;
-}
-
-
-double *alloc_1d_matrix(int n)
-{
-	double *arr = (double *) calloc(n, sizeof(double));
+	fptype *arr = (fptype *) calloc(n, sizeof(fptype));
 
 	if (!arr)
 	{
@@ -279,16 +268,20 @@ double *alloc_1d_matrix(int n)
 }
 
 
-void free_2d_matrix(double **arr, int n)
+void free_2d_matrix(fptype **arr, int n)
 {
 	int i;
+
+	if (!arr)
+		return;
+
 	for (i = 0; i < n; i++)
 		free(arr[i]);
 	free(arr);
 }
 
 
-void free_matrices(double **a1, double **a2, double *b1, double *b2, int n)
+void free_matrices(fptype **a1, fptype **a2, fptype *b1, fptype *b2, int n)
 {
 	free_2d_matrix(a1, n);
 	free_2d_matrix(a2, n);
@@ -297,7 +290,7 @@ void free_matrices(double **a1, double **a2, double *b1, double *b2, int n)
 }
 
 
-void write_2d_matrix(char *filename, double **arr, int n)
+void write_2d_matrix(char *filename, fptype **arr, int n)
 {
 	int i, j;
 
@@ -319,7 +312,7 @@ void write_2d_matrix(char *filename, double **arr, int n)
 }
 
 
-void write_1d_matrix(char *filename, double *arr, int n)
+void write_1d_matrix(char *filename, fptype *arr, int n)
 {
 	int i;
 
@@ -332,7 +325,7 @@ void write_1d_matrix(char *filename, double *arr, int n)
 
 	for (i = 0; i < n; i++)
 	{
-		fprintf(outfile, "%f\n", arr[i]);
+		fprintf(outfile, "%10f\n", arr[i]);
 	}
 
 	fclose(outfile);
@@ -340,10 +333,10 @@ void write_1d_matrix(char *filename, double *arr, int n)
 
 #if 1
 
-double  **cholesky_decomposition(double **a, int n)
+fptype  **cholesky_decomposition(fptype **a, int n)
 {
 	int i, j, k;
-	double sum, **l = alloc_2d_matrix(n);
+	fptype sum, **l = alloc_2d_matrix(n);
 
 	for (i = 1; i <= n; i++)
 	{
@@ -368,10 +361,10 @@ double  **cholesky_decomposition(double **a, int n)
 
 #else
 
-double  **cholesky_decomposition(double **a, int n)
+fptype  **cholesky_decomposition(fptype **a, int n)
 {
 	int i, j, k;
-	double sum, **l = alloc_2d_matrix(n);
+	fptype sum, **l = alloc_2d_matrix(n);
 
 	for (i = 0; i < n; i++)
 	{
