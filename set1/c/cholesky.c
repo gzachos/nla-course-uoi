@@ -62,7 +62,7 @@ int main(int argc, char **argv)
 	init_matrices(a1, a2, b1, b2, n);
 
 	/* Write a1, a2, b1 and b2 to files */
-#if 1
+#if 0
 	snprintf(filename, BUFF_SIZE, "a1_%d.txt", n);
 	write_2d_matrix(filename, a1, n);
 	snprintf(filename, BUFF_SIZE, "a2_%d.txt", n);
@@ -163,10 +163,15 @@ fptype **transpose(fptype **arr, int n)
 {
 	fptype **trn = alloc_2d_matrix(n);
 	int i, j;
-
+#ifdef OPTIMIZED
+	for (i = 0; i < n; i++)
+		for (j = (i-2 >= 0) ? i-2 : 0; j < n; j++)
+			trn[i][j] = arr[j][i];
+#else
 	for (i = 0; i < n; i++)
 		for (j = 0; j < n; j++)
 			trn[i][j] = arr[j][i];
+#endif
 	return trn;
 }
 
@@ -179,7 +184,11 @@ fptype *forward_substitution(fptype **l, fptype *b, int n)
 	for (i = 0; i < n; i++)
 	{
 		sum = b[i];
+#ifdef OPTIMIZED
+		for (k = (i-2 >= 0) ? i-2 : 0; k < i; k++)
+#else
 		for (k = 0; k < i; k++)
+#endif
 			sum -= l[i][k] * y[k];
 		y[i] = sum / l[i][i];
 	}
@@ -196,7 +205,11 @@ fptype *back_substitution(fptype **l, fptype *b, int n)
 	for (i = n; i >= 1; i--)
 	{
 		sum = b[i-1];
+#ifdef OPTIMIZED
+		for (k = (i+2 <= n) ? i+2 : n; k >= i+1; k--)
+#else
 		for (k = n; k >= i+1; k--)
+#endif
 			sum -= l[i-1][k-1] * y[k-1];
 		y[i-1] = sum / l[i-1][i-1];
 	}
@@ -352,17 +365,29 @@ fptype  **cholesky_decomposition(fptype **a, int n)
 
 	for (i = 1; i <= n; i++)
 	{
+#ifdef OPTIMIZED
+		for (j = (i-2 >= 1) ? i-2 : 1; j <= i-1; j++)
+#else
 		for (j = 1; j <= i-1; j++)
+#endif
 		{
 			sum = a[i-1][j-1];
+#ifdef OPTIMIZED
+			for (k = (j-2 >= 1) ? j-2 : 1; k <= j-1; k++)
+#else
 			for (k = 1; k <= j-1; k++)
+#endif
 			{
 				sum -= l[i-1][k-1] * l[j-1][k-1];
 			}
 			l[i-1][j-1] = sum / l[j-1][j-1];
 		}
 		sum = a[i-1][i-1];
+#ifdef OPTIMIZED
+		for (j = (i-2 >= 1) ? i-2 : 1; j <= i-1; j++)
+#else
 		for (j = 1; j <= i-1; j++)
+#endif
 		{
 			sum -= l[i-1][j-1] * l[i-1][j-1];
 		}
