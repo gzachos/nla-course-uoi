@@ -49,10 +49,14 @@ int main(void)
 
 	/* Write a1, a2, b1 and b2 to files */
 #if 0
-	write_2d_matrix("a1.txt", a1, n);
-	write_2d_matrix("a2.txt", a2, n);
-	write_1d_matrix("b1.txt", b1, n);
-	write_1d_matrix("b2.txt", b2, n);
+	snprintf(filename, BUFF_SIZE, "a1_%d.txt", n);
+	write_2d_matrix(filename, a1, n);
+	snprintf(filename, BUFF_SIZE, "a2_%d.txt", n);
+	write_2d_matrix(filename, a2, n);
+	snprintf(filename, BUFF_SIZE, "b1_%d.txt", n);
+	write_1d_matrix(filename, b1, n);
+	snprintf(filename, BUFF_SIZE, "b2_%d.txt", n);
+	write_1d_matrix(filename, b2, n);
 #endif
 	l1 = cholesky_decomposition(a1, n);
 #if 1
