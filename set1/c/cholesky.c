@@ -85,14 +85,6 @@ int main(void)
 	x1 = back_substitution(lt1, y1, n);
 
 #if 0
-	printf("\nL =\n\n");
-	for (i = 0; i < n; i++)
-	{
-		for (j = 0; j < n; j++)
-			printf("%10f ", l1[i][j]);
-		printf("\n");
-	}
-	printf("\n");
 	printf("\nY =\n\n");
 	for (i = 0; i < n; i++)
 		printf("%10f\n", y1[i]);
@@ -103,6 +95,8 @@ int main(void)
 
 	snprintf(filename, BUFF_SIZE, "l1_%d.txt", n);
 	write_2d_matrix(filename, l1, n);
+	snprintf(filename, BUFF_SIZE, "lt1_%d.txt", n);
+	write_2d_matrix(filename, lt1, n);
 	snprintf(filename, BUFF_SIZE, "x1_%d.txt", n);
 	write_1d_matrix(filename, x1, n);
 	snprintf(filename, BUFF_SIZE, "y1_%d.txt", n);
