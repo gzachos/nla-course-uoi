@@ -26,9 +26,9 @@ fptype  **transpose(fptype **arr, int n);
 void      init_matrices(fptype **a1, fptype **a2, fptype *b1, fptype *b2, int n);
 
 
-int main(void)
+int main(int argc, char **argv)
 {
-	int i, j, k, n = 10;
+	int i, j, k, n;
 	fptype **a1  = NULL, **a2  = NULL,
 	        *b1  = NULL,  *b2  = NULL,
 	        *x1  = NULL,  *x2  = NULL,
@@ -39,6 +39,20 @@ int main(void)
 	         sum;
 	char filename[64];
 
+	if (argc != 2)
+	{
+		fprintf(stderr, "Usage: %s N\t(N > 0)\n", argv[0]);
+		return EXIT_SUCCESS;
+	}
+
+	if ((n = atoi(argv[1])) <= 0)
+	{
+		fprintf(stderr, "Matrix size (N) should be positive!\n");
+		return EXIT_SUCCESS;
+	}
+	else
+		printf("N = %d\n", n);
+
 	if (alloc_matrices(&a1, &a2, &b1, &b2, n) != 0)
 	{
 		return EXIT_FAILURE;
@@ -48,7 +62,7 @@ int main(void)
 	init_matrices(a1, a2, b1, b2, n);
 
 	/* Write a1, a2, b1 and b2 to files */
-#if 0
+#if 1
 	snprintf(filename, BUFF_SIZE, "a1_%d.txt", n);
 	write_2d_matrix(filename, a1, n);
 	snprintf(filename, BUFF_SIZE, "a2_%d.txt", n);
