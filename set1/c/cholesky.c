@@ -3,19 +3,13 @@
 #include <errno.h>
 #include <math.h>
 
-#define BUFF_SIZE	16
+#define  BUFF_SIZE	16
 
-#define PRINT_INPUT_MATRICES
-#define VERIFY_CHOLESKY_DECOMP
-#define PRINT_INTERMEDIATE_RESULTS
-#define PRINT_RESULTS
-#define PRINT_TOFILE
-
-#undef PRINT_INPUT_MATRICED
-// #undef VERIFY_CHOLESKY_DECOMP
-#undef PRINT_INTERMEDIARE_RESULTS
-// #undef PRINT_RESULTS
-// #undef PRINT_TOFILE
+#define  PRINT_INPUT_MATRICES
+#define  VERIFY_CHOLESKY_DECOMP
+#define  PRINT_INTERMEDIATE_RESULTS
+#define  PRINT_RESULTS
+#define  PRINT_TOFILE
 
 #if 1
 	typedef double fptype;
@@ -45,7 +39,9 @@ int main(int argc, char **argv)
 	int n;
 	fptype **a1  = NULL, **a2  = NULL,
 	        *b1  = NULL,  *b2  = NULL;
+#ifdef PRINT_INPUT_MATRICES
 	char filename[BUFF_SIZE];
+#endif
 
 	if (argc != 2)
 	{
@@ -71,12 +67,16 @@ int main(int argc, char **argv)
 
 	/* Write a1, a2, b1 and b2 to files */
 #ifdef PRINT_INPUT_MATRICES
+	printf("\nWriting A1...\n");
 	snprintf(filename, BUFF_SIZE, "a1_%d.txt", n);
 	write_2d_matrix(filename, a1, n);
+	printf("\nWriting A2...\n");
 	snprintf(filename, BUFF_SIZE, "a2_%d.txt", n);
 	write_2d_matrix(filename, a2, n);
+	printf("\nWriting B1...\n");
 	snprintf(filename, BUFF_SIZE, "b1_%d.txt", n);
 	write_1d_matrix(filename, b1, n);
+	printf("\nWriting B2...\n");
 	snprintf(filename, BUFF_SIZE, "b2_%d.txt", n);
 	write_1d_matrix(filename, b2, n);
 #endif
@@ -110,6 +110,7 @@ void verify_cholesky_decomposition(fptype **l, int n, int sysn)
 		}
 	}
 
+	printf("\nWriting A%d = L%d * L%d^T...\n", sysn, sysn, sysn);
 	snprintf(filename, BUFF_SIZE, "ra%1d_%d.txt", sysn , n);
 	write_2d_matrix(filename, ra, n);
 	free_2d_matrix(ra, n);
@@ -120,7 +121,9 @@ void verify_cholesky_decomposition(fptype **l, int n, int sysn)
 void solve_system(fptype **a, fptype *b, int n, int sysn)
 {
 	fptype **l, **l_trn, *y, *x;
+#if defined(PRINT_INTERMEDIATE_RESULTS) || defined(PRINT_RESULTS)
 	char filename[BUFF_SIZE];
+#endif
 
 	l = cholesky_decomposition(a, n);
 
@@ -138,17 +141,21 @@ void solve_system(fptype **a, fptype *b, int n, int sysn)
 	x = back_substitution(l_trn, y, n);
 
 #ifdef PRINT_INTERMEDIATE_RESULTS
+	printf("\nWriting L%d...\n", sysn);
 	snprintf(filename, BUFF_SIZE, "l%1d_%d.txt", sysn, n);
 	write_2d_matrix(filename, l, n);
+	printf("\nWriting L%d^T...\n", sysn);
 	snprintf(filename, BUFF_SIZE, "lt%1d_%d.txt", sysn, n);
 	write_2d_matrix(filename, l_trn, n);
-	snprintf(filename, BUFF_SIZE, "x%1d_%d.txt", sysn, n);
-	write_1d_matrix(filename, x, n);
+	printf("\nWriting Y%d...\n", sysn);
+	snprintf(filename, BUFF_SIZE, "y%1d_%d.txt", sysn, n);
+	write_1d_matrix(filename, y, n);
 #endif
 
 #ifdef PRINT_RESULTS
-	snprintf(filename, BUFF_SIZE, "y%1d_%d.txt", sysn, n);
-	write_1d_matrix(filename, y, n);
+	printf("\nWriting X%d...\n", sysn);
+	snprintf(filename, BUFF_SIZE, "x%1d_%d.txt", sysn, n);
+	write_1d_matrix(filename, x, n);
 #endif
 
 	free_2d_matrix(l, n);
@@ -369,7 +376,9 @@ void write_2d_matrix(char *filename, fptype **arr, int n)
 		fprintf(outfile, "\n");
 	}
 
+#ifdef PRINT_TOFILE
 	fclose(outfile);
+#endif
 }
 
 
@@ -394,7 +403,9 @@ void write_1d_matrix(char *filename, fptype *arr, int n)
 		fprintf(outfile, "%10f\n", arr[i]);
 	}
 
+#ifdef PRINT_TOFILE
 	fclose(outfile);
+#endif
 }
 
 #if 1
