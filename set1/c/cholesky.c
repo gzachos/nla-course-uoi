@@ -3,7 +3,19 @@
 #include <errno.h>
 #include <math.h>
 
-#define BUFF_SIZE	64
+#define BUFF_SIZE	16
+
+#define PRINT_INPUT_MATRICES
+#define VERIFY_CHOLESKY_DECOMP
+#define PRINT_INTERMEDIATE_RESULTS
+#define PRINT_RESULTS
+#define PRINT_TOFILE
+
+#undef PRINT_INPUT_MATRICED
+// #undef VERIFY_CHOLESKY_DECOMP
+#undef PRINT_INTERMEDIARE_RESULTS
+// #undef PRINT_RESULTS
+// #undef PRINT_TOFILE
 
 #if 1
 	typedef double fptype;
@@ -24,20 +36,16 @@ fptype   *forward_substitution(fptype **l, fptype *b, int n);
 fptype   *back_substitution(fptype **l, fptype *b, int n);
 fptype  **transpose(fptype **arr, int n);
 void      init_matrices(fptype **a1, fptype **a2, fptype *b1, fptype *b2, int n);
+void      solve_system(fptype **a, fptype *b, int n, int sysn);
+void      verify_cholesky_decomposition(fptype **l, int n, int sysn);
 
 
 int main(int argc, char **argv)
 {
-	int i, j, k, n;
+	int n;
 	fptype **a1  = NULL, **a2  = NULL,
-	        *b1  = NULL,  *b2  = NULL,
-	        *x1  = NULL,  *x2  = NULL,
-	        *y1  = NULL,  *y2  = NULL,
-	       **l1  = NULL, **l2  = NULL,
-	       **lt1 = NULL, **lt2 = NULL,
-	       **ra1 = NULL, **ra2 = NULL,
-	         sum;
-	char filename[64];
+	        *b1  = NULL,  *b2  = NULL;
+	char filename[BUFF_SIZE];
 
 	if (argc != 2)
 	{
@@ -62,7 +70,7 @@ int main(int argc, char **argv)
 	init_matrices(a1, a2, b1, b2, n);
 
 	/* Write a1, a2, b1 and b2 to files */
-#if 0
+#ifdef PRINT_INPUT_MATRICES
 	snprintf(filename, BUFF_SIZE, "a1_%d.txt", n);
 	write_2d_matrix(filename, a1, n);
 	snprintf(filename, BUFF_SIZE, "a2_%d.txt", n);
@@ -72,9 +80,24 @@ int main(int argc, char **argv)
 	snprintf(filename, BUFF_SIZE, "b2_%d.txt", n);
 	write_1d_matrix(filename, b2, n);
 #endif
-	l1 = cholesky_decomposition(a1, n);
-#if 1
-	ra1 = alloc_2d_matrix(n);
+
+	solve_system(a1, b1, n, 1);
+	solve_system(a2, b2, n, 2);
+
+	free_matrices(a1, a2, b1, b2, n);
+
+	return EXIT_SUCCESS;
+}
+
+
+#ifdef VERIFY_CHOLESKY_DECOMP
+void verify_cholesky_decomposition(fptype **l, int n, int sysn)
+{
+	int i, j, k;
+	fptype **ra, sum;
+	char filename[BUFF_SIZE];
+
+	ra = alloc_2d_matrix(n);
 
 	/* Calculate L * L-transpose */
 	for (i = 0; i < n; i++)
@@ -82,48 +105,56 @@ int main(int argc, char **argv)
 		for (j = 0; j < n; j++)
 		{
 			for (k = 0, sum = 0.0; k < n; k++)
-				sum += l1[i][k] * l1[j][k];
-			ra1[i][j] = sum;
+				sum += l[i][k] * l[j][k];
+			ra[i][j] = sum;
 		}
 	}
 
-	snprintf(filename, BUFF_SIZE, "ra1_%d.txt", n);
-	write_2d_matrix(filename, ra1, n);
+	snprintf(filename, BUFF_SIZE, "ra%1d_%d.txt", sysn , n);
+	write_2d_matrix(filename, ra, n);
+	free_2d_matrix(ra, n);
+}
 #endif
 
-	/* L*y=b (forward substitution) */
-	y1  = forward_substitution(l1, b1, n);
-	lt1 = transpose(l1, n);
 
-	/* LT*x=y (back substitution) */
-	x1 = back_substitution(lt1, y1, n);
+void solve_system(fptype **a, fptype *b, int n, int sysn)
+{
+	fptype **l, **l_trn, *y, *x;
+	char filename[BUFF_SIZE];
 
-#if 0
-	printf("\nY =\n\n");
-	for (i = 0; i < n; i++)
-		printf("%10f\n", y1[i]);
-	printf("\nX =\n\n");
-	for (i = 0; i < n; i++)
-		printf("%10f\n", x1[i]);
+	l = cholesky_decomposition(a, n);
+
+#ifdef VERIFY_CHOLESKY_DECOMP
+	verify_cholesky_decomposition(l, n, sysn);
 #endif
 
-	snprintf(filename, BUFF_SIZE, "l1_%d.txt", n);
-	write_2d_matrix(filename, l1, n);
-	snprintf(filename, BUFF_SIZE, "lt1_%d.txt", n);
-	write_2d_matrix(filename, lt1, n);
-	snprintf(filename, BUFF_SIZE, "x1_%d.txt", n);
-	write_1d_matrix(filename, x1, n);
-	snprintf(filename, BUFF_SIZE, "y1_%d.txt", n);
-	write_1d_matrix(filename, y1, n);
+	/* L * y = b, solve for y */
+	y = forward_substitution(l, b, n);
 
-	free_2d_matrix(l1, n);  free_2d_matrix(l2, n);
-	free_2d_matrix(lt1, n); free_2d_matrix(lt2, n);
-	free_2d_matrix(ra1, n); free_2d_matrix(ra2, n);
-	free(y1); free(y2);
-	free(x1); free(x2);
-	free_matrices(a1, a2, b1, b2, n);
+	/* Calculate transpose of matrix l */
+	l_trn = transpose(l, n);
 
-	return EXIT_SUCCESS;
+	/* L^T * x = y, solve for x */
+	x = back_substitution(l_trn, y, n);
+
+#ifdef PRINT_INTERMEDIATE_RESULTS
+	snprintf(filename, BUFF_SIZE, "l%1d_%d.txt", sysn, n);
+	write_2d_matrix(filename, l, n);
+	snprintf(filename, BUFF_SIZE, "lt%1d_%d.txt", sysn, n);
+	write_2d_matrix(filename, l_trn, n);
+	snprintf(filename, BUFF_SIZE, "x%1d_%d.txt", sysn, n);
+	write_1d_matrix(filename, x, n);
+#endif
+
+#ifdef PRINT_RESULTS
+	snprintf(filename, BUFF_SIZE, "y%1d_%d.txt", sysn, n);
+	write_1d_matrix(filename, y, n);
+#endif
+
+	free_2d_matrix(l, n);
+	free_2d_matrix(l_trn, n);
+	free(y);
+	free(x);
 }
 
 
@@ -318,13 +349,18 @@ void free_matrices(fptype **a1, fptype **a2, fptype *b1, fptype *b2, int n)
 void write_2d_matrix(char *filename, fptype **arr, int n)
 {
 	int i, j;
+	FILE *outfile;
 
-	FILE *outfile = fopen(filename, "w");
+#ifdef PRINT_TOFILE
+	outfile = fopen(filename, "w");
 	if (!outfile)
 	{
 		perror("fopen");
 		return;
 	}
+#else
+	outfile = stdout;
+#endif
 
 	for (i = 0; i < n; i++)
 	{
@@ -340,13 +376,18 @@ void write_2d_matrix(char *filename, fptype **arr, int n)
 void write_1d_matrix(char *filename, fptype *arr, int n)
 {
 	int i;
+	FILE *outfile;
 
-	FILE *outfile = fopen(filename, "w");
+#ifdef PRINT_TOFILE
+	outfile = fopen(filename, "w");
 	if (!outfile)
 	{
 		perror("fopen");
 		return;
 	}
+#else
+	outfile = stdout;
+#endif
 
 	for (i = 0; i < n; i++)
 	{
