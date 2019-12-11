@@ -90,7 +90,7 @@ int main(int argc, char **argv)
 #endif
 
 	solve_system(a1, b1, n, 1);
-	// solve_system(a2, b2, n, 2);
+	solve_system(a2, b2, n, 2);
 
 	free_matrices(a1, a2, b1, b2, n);
 
