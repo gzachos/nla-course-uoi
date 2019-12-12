@@ -34,3 +34,12 @@ X1 = solve_system(A1, B1, n)
 
 X2 = solve_system(A2, B2, n)
 
+filename1 = sprintf('x1_%d.mat', n);
+filename2 = sprintf('x2_%d.mat', n);
+
+save_1d_matrix(filename1, X1, n);
+save_1d_matrix(filename2, X2, n);
+
+% save file1 X1
+% save file2 X2
+
