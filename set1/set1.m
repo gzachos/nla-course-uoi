@@ -1,6 +1,6 @@
 #!/usr/bin/env octave
 
-n = 10
+n = 1000
 
 A1 = zeros(n,n,"single");
 A2 = zeros(n,n,"single");

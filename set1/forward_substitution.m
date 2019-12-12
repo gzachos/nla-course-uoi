@@ -1,11 +1,15 @@
-function [y] = forward_substitution(l,b,n)
-	y = zeros(10,1,"single");
+function [Y] = forward_substitution(L,B,n)
+	Y = zeros(10,1,"single");
 
 	for i = 1:n
 		tmp_sum = 0.0;
-		for k = 1:i-1
-			tmp_sum += l(i,k) * y(k);
+		t = 1;
+		if (i >= 3)
+			t = i-2;
+		endif
+		for k = t:i-1
+			tmp_sum += L(i,k) * Y(k);
 		endfor
-		y(i) = (b(i) - tmp_sum) / l(i,i);
+		Y(i) = (B(i) - tmp_sum) / L(i,i);
 	endfor
 endfunction
