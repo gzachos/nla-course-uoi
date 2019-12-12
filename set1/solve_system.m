@@ -1,9 +1,10 @@
 function [X] = solve_system(A, B, n)
-        L = cholesky(A, n);
-	% LR = chol(A, "lower");
-	% L-LR
-        L_trn = L';
-        A = L * L_trn;
-        Y = forward_substitution(L, B, n);
-        X = back_substitution(L_trn, Y, n);
+	% Perform Cholesky row-decomposition
+	L = cholesky(A, n);
+	L_trn = L';
+	% A = L * L_trn;  % Verify decomposition
+	% L * Y = B, solve for Y using forward substitution
+	Y = forward_substitution(L, B, n);
+	% L^T * X = Y, solve for X using back substitution
+	X = back_substitution(L_trn, Y, n);
 endfunction
