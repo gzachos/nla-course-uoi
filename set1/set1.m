@@ -1,7 +1,18 @@
 #!/usr/bin/env octave
 
-n = 1000
+% Parse command-line argument (N)
+arg_list = argv();
+if (nargin() == 1)
+	tn = str2num(arg_list{1});
+	if (tn > 0)
+		n = tn
+	endif
+else
+	printf("USAGE: ./%s N    (N > 0)\n", program_name());
+	return;
+endif
 
+% Alloc A1,A2,B1,B2
 A1 = zeros(n,n,"single");
 A2 = zeros(n,n,"single");
 B1 = zeros(n,1,"single");
