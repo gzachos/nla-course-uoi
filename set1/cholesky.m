@@ -1,20 +1,18 @@
-
-function [l] = cholesky(a,n)
-	l = zeros(n,n);
+function [L] = cholesky(A,n)
+	L = zeros(n,n,"single");
 
 	for i = 1:n
 		for j = 1:i-1
-			tmp_sum = a(i,j);
+			tmp_sum = A(i,j);
 			for k = 1:j-1
-				tmp_sum -= l(i,k) * l(j,k);
+				tmp_sum -= L(i,k) * L(j,k);
 			endfor
-			l(i,j) = tmp_sum / l(j,j);
+			L(i,j) = tmp_sum / L(j,j);
 		endfor
-		tmp_sum = a(i,i);
+		tmp_sum = A(i,i);
 		for j = 1:i-1
-			tmp_sum -= l(i,j) * l(i,j);
+			tmp_sum -= L(i,j) * L(i,j);
 		endfor
-		l(i,i) = sqrt(tmp_sum);
+		L(i,i) = sqrt(tmp_sum);
 	endfor
 endfunction
-
