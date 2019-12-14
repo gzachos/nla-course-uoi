@@ -195,9 +195,9 @@ void init_matrices(fptype **a1, fptype **a2, fptype *b1, fptype *b2, int n)
 				a1[i][j] = 6;
 				a2[i][j] = 7;
 			}
-			else if (i+j == (i<<1)-1 || i+j == (j<<1)-1)
+			else if (abs(i-j) == 1)
 				a1[i][j] = a2[i][j] = -4;
-			else if (i+j == (i<<1)-2 || i+j == (j<<1)-2)
+			else if (abs(i-j) == 2)
 				a1[i][j] = a2[i][j] = 1;
 		}
 	}
