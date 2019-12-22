@@ -21,4 +21,4 @@ The project was implemented in both Octave and C language.
 The C language version supports:
   * single and double-precision floating-point arithmetic by ```typedef```ing each time
 ```fptype``` to ```double``` or ```float```
-  * optimal and non-optimal versions by defining or not preprocessor macro ```OPTIMIZED``` (see [Makefile](c/Makefile)).
+  * optimal and non-optimal versions by defining or not preprocessor macro ```OPTIMIZED``` (see [Makefile](https://github.com/gzachos/nla-course-uoi/blob/master/set1/c/Makefile)).
