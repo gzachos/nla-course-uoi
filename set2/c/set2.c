@@ -329,7 +329,7 @@ void solve_system(fptype **a, fptype *b, int n, sys_id sid)
 #endif
 
 	if (!(x = steepest_descent(a, b, 0.0005, n)))
-			return;
+		return;
 
 #ifdef PRINT_RESULTS
 	#ifndef PRINT_TOFILE
@@ -415,17 +415,22 @@ fptype dot_product(fptype *v1, fptype *v2, int n)
 
 fptype *matrix_vector_multiplication(fptype *res, fptype **mat, fptype *v, int n)
 {
-	int i, j;
-	fptype tmp_sum;
+	int i, j, lb, ub;
 
 	if (!res || !mat || !v)
 		return NULL;
 
 	for (i = 0; i < n; i++)
 	{
-		for (j = 0, tmp_sum = 0.0; j < n; j++)
-			tmp_sum += mat[i][j] * v[j];
-		res[i] = tmp_sum;
+#ifdef OPTIMIZED
+		lb = (i >= 2)   ? i-2 : 0;
+		ub = (i <= n-3) ? i+2 : n-1;
+#else
+		lb = 0;
+		ub = n-1;
+#endif
+		for (j = lb, res[i] = 0.0; j <= ub; j++)
+			res[i] += mat[i][j] * v[j];
 	}
 	return res;
 }
