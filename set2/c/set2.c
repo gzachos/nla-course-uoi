@@ -25,7 +25,9 @@
 #include <errno.h>
 #include <math.h>
 
-#define  BUFF_SIZE	16
+#define BUFF_SIZE      16
+#define NUM_METHODS    2
+#define MAX_ERROR      0.0005
 
 // #define  PRINT_INPUT_MATRICES
 #define  PRINT_RESULTS
@@ -41,12 +43,15 @@
 
 typedef enum {A1, A2, B1, ALL} dealloc_level;
 typedef enum {S1=1, S2} sys_id;
+typedef enum {STEEPEST_DESCENT, CONJUGATE_GRADIENT} method_id;
 
 /* Function Prototypes */
 int       alloc_matrices(fptype ***a1, fptype ***a2, fptype **b1, fptype **b2,
 		int n);
 int       alloc_sd_matrices(fptype **x, fptype **r, fptype **Ar, fptype **Ax,
 		int n);
+int       alloc_cg_matrices(fptype **x, fptype **r, fptype **p, fptype **Ap,
+		fptype **Ax, fptype **tmp, int n);
 fptype  **alloc_2d_matrix(int n);
 fptype   *alloc_1d_matrix(int n);
 void      init_matrices(fptype **a1, fptype **a2, fptype *b1, fptype *b2, int n);
@@ -55,16 +60,29 @@ void      write_1d_matrix(char *filename, fptype *mat, int n);
 void      print_input_matrices(void);
 void      solve_system(fptype **a, fptype *b, int n, sys_id sid);
 fptype   *steepest_descent(fptype **A, fptype *b, fptype max_error, int n);
+fptype   *conjugate_gradient(fptype **A, fptype *b, fptype max_error, int n);
 fptype    euclidean_norm(fptype *v, int n);
 fptype    dot_product(fptype *v1, fptype *v2, int n);
 fptype   *matrix_vector_multiplication(fptype *res, fptype **mat, fptype *v,
 		int n);
-fptype   *scalar_vector_multiplication(fptype s, fptype *v, int n);
-fptype   *add_vectors(fptype *v1, fptype *v2, int n);
+fptype   *scalar_vector_multiplication(fptype *res, fptype s, fptype *v, int n);
+fptype   *add_vectors(fptype *res, fptype *v1, fptype *v2, int n);
 fptype   *subtract_vectors(fptype *res, fptype *v1, fptype *v2, int n);
 void      free_matrices(fptype **a1, fptype **a2, fptype *b1, fptype *b2,
 		int n, dealloc_level level);
+void      free_sd_matrices(fptype *r, fptype *Ar, fptype *Ax);
+void      free_cg_matrices(fptype **r, fptype *p, fptype *Ap, fptype *Ax,
+		fptype *tmp);
 void      free_2d_matrix(fptype **mat, int n);
+
+/* Global data */
+fptype *(*methods[NUM_METHODS])(fptype **A, fptype *b, fptype max_error, int n) = {
+	steepest_descent,
+	conjugate_gradient
+};
+
+char *method_names[NUM_METHODS] = {"Steepest Descent", "Conjugate Gradient"};
+char *method_initials[NUM_METHODS] = {"sd", "cg"};
 
 
 int main(int argc, char **argv)
@@ -165,7 +183,38 @@ int alloc_sd_matrices(fptype **x, fptype **r, fptype **Ar, fptype **Ax, int n)
 
 	return EXIT_SUCCESS;
 }
-	
+
+
+int alloc_cg_matrices(fptype **x, fptype **r, fptype **p, fptype **Ap,
+		fptype **Ax, fptype **tmp, int n)
+{
+	int i, j;
+
+	if (alloc_sd_matrices(x, tmp, Ap, Ax, n) != 0)
+		return EXIT_FAILURE;
+
+	if (!(*p = alloc_1d_matrix(n)))
+	{
+		return EXIT_FAILURE;
+	}
+
+	for (i = 0; i < 3; i++)
+	{
+		if (!(r[i] = alloc_1d_matrix(n)))
+		{
+			free(*x);
+			free(*Ap);
+			free(*Ax);
+			free(*tmp);
+			for (j = 0; j < i; j++)
+				free(r[j]);
+			return EXIT_FAILURE;
+		}
+	}
+
+	return EXIT_SUCCESS;
+}
+
 
 fptype **alloc_2d_matrix(int n)
 {
@@ -323,23 +372,28 @@ void print_input_matrices(void)
 
 void solve_system(fptype **a, fptype *b, int n, sys_id sid)
 {
+	int i;
 	fptype *x;
 #ifdef PRINT_RESULTS
 	char filename[BUFF_SIZE];
 #endif
-
-	if (!(x = steepest_descent(a, b, 0.0005, n)))
-		return;
-
+	printf("\n######################\n");
+	printf("# System: No.%1d       #\n", sid);
+	printf("######################\n");
+	for (i = 0; i < NUM_METHODS; i++)
+	{
+		printf("\n# Method: %s\n", method_names[i]);
+		if (!(x = (methods[i])(a, b, MAX_ERROR, n)))
+			return;
 #ifdef PRINT_RESULTS
 	#ifndef PRINT_TOFILE
-	printf("\nWriting X%d...\n", sid);
+		printf("\nWriting X%d...\n", sid);
 	#endif
-	snprintf(filename, BUFF_SIZE, "x%1d_%d.txt", sid, n);
-	write_1d_matrix(filename, x, n);
+		snprintf(filename, BUFF_SIZE, "x%1d_%d_%2s.txt", sid, n, method_initials[i]);
+		write_1d_matrix(filename, x, n);
 #endif
-
-	free(x);
+		free(x);
+	}
 }
 
 
@@ -357,18 +411,76 @@ fptype *steepest_descent(fptype **A, fptype *b, fptype max_error, int n)
 	while (euclidean_norm(r, n) > max_error)
 	{
 		k++;
+		// Ar = A * r^(k-1)
 		Ar = matrix_vector_multiplication(Ar, A, r, n);
+		// a = (r^(k-1), r^(k-1)) / (Ar, r^(k-1))
 		a  = dot_product(r, r, n) / dot_product(Ar, r, n);
-		x  = add_vectors(x, scalar_vector_multiplication(a, r, n), n);
+		// x^(k) = x^(k-1) + a * r^(k-1)
+		x  = add_vectors(x, x, scalar_vector_multiplication(r, a, r, n), n);
+		// Ax = A * x^(k)
 		Ax = matrix_vector_multiplication(Ax, A, x, n);
+		// r^(k) = b - Ax
 		r  = subtract_vectors(r, b, Ax, n);
 	}
-	
+
 	printf("\nk = %d\n", k);
 
-	free(r);
-	free(Ar);
-	free(Ax);
+	free_sd_matrices(r, Ar, Ax);
+
+	return x;
+}
+
+
+fptype *conjugate_gradient(fptype **A, fptype *b, fptype max_error, int n)
+{
+	int k;
+	fptype *x, *r[3], *p, a_k, b_k, *Ap, *Ax, *tmp, *tmp_ptr;
+
+	if (alloc_cg_matrices(&x, r, &p, &Ap, &Ax, &tmp, n) != 0)
+		return NULL;
+
+	// Vector x^(0) is already the zero vector
+	memcpy(r[0], b, n*sizeof(fptype)); // r^(0) = b;
+	memcpy(p, r[0], n*sizeof(fptype)); // p^(0) = r^(0);
+	// Ap = A * p^(1)
+	Ap = matrix_vector_multiplication(Ap, A, p, n);
+	// a_1 = (r^(0), r^(0)) / (Ap, p^(1))
+	a_k = dot_product(r[0], r[0], n) / dot_product(Ap, p, n);
+	// x^(1) = x^(0) + a_1 * p^(1)
+	x = add_vectors(x, x, scalar_vector_multiplication(tmp, a_k, p, n), n);
+	// Ax = A * x^(1)
+	Ax = matrix_vector_multiplication(Ax, A, x, n);
+	// r^(1) = b - Ax
+	r[1] = subtract_vectors(r[1], b, Ax, n);
+	k = 1;
+	while (euclidean_norm(r[1], n) > max_error && k < n)
+	{
+		k++;
+		// b_k = (r^(k-1), r^(k-1)) / (r^(k-2), r^(k-2))
+		b_k = dot_product(r[1], r[1], n) / dot_product(r[0], r[0], n);
+		// p^(k) = r^(k-1) + b_k * p^(k-1)
+		p = add_vectors(p, r[1], scalar_vector_multiplication(tmp, b_k, p, n), n);
+		// Ap = A * p^(k)
+		Ap = matrix_vector_multiplication(Ap, A, p, n);
+		// a_k = (r^(k-1), r^(k-1)) / (Ap, p^(k))
+		a_k = dot_product(r[1], r[1], n) / dot_product(Ap, p, n);
+		// x^(k) = x^(k-1) + a_k * p^(k)
+		x = add_vectors(x, x, scalar_vector_multiplication(tmp, a_k, p, n), n);
+		// Ax = A * x^(k)
+		Ax = matrix_vector_multiplication(Ax, A, x, n);
+		// r^(k) = b - Ax
+		r[2] = subtract_vectors(r[2], b, Ax, n);
+		// Shift left r[i] in a round-robin manner
+		tmp_ptr = r[0];
+		r[0] = r[1];
+		r[1] = r[2];
+		r[2] = tmp_ptr;
+	}
+
+	printf("\nk = %d\n", k);
+
+	free_cg_matrices(r, p, Ap, Ax, tmp);
+
 	return x;
 }
 
@@ -436,33 +548,31 @@ fptype *matrix_vector_multiplication(fptype *res, fptype **mat, fptype *v, int n
 }
 
 
-/* Multiply vector v by scalar  s. Doesn't alloc a new vector! */
-fptype *scalar_vector_multiplication(fptype s, fptype *v, int n)
+fptype *scalar_vector_multiplication(fptype *res, fptype s, fptype *v, int n)
 {
 	int i;
 
-	if (!v)
+	if (!res || !v)
 		return NULL;
 
 	for (i = 0; i < n; i++)
-		v[i] *= s;
+		res[i] = v[i] * s;
 
-	return v;
+	return res;
 }
 
 
-/* Add vector v2 to v1. Doesn't alloc a new vector! */
-fptype *add_vectors(fptype *v1, fptype *v2, int n)
+fptype *add_vectors(fptype *res, fptype *v1, fptype *v2, int n)
 {
 	int i;
 
-	if (!v1 || !v2)
+	if (!res || !v1 || !v2)
 		return NULL;
 
 	for (i = 0; i < n; i++)
-		v1[i] += v2[i];
+		res[i] = v1[i] + v2[i];
 
-	return v1;
+	return res;
 }
 
 
@@ -494,6 +604,24 @@ void free_matrices(fptype **a1, fptype **a2, fptype *b1, fptype *b2,
 		case A1:
 			free_2d_matrix(a1, n);
 	}
+}
+
+
+void free_sd_matrices(fptype *r, fptype *Ar, fptype *Ax)
+{
+	free(r);
+	free(Ar);
+	free(Ax);
+}
+
+
+void free_cg_matrices(fptype **r, fptype *p, fptype *Ap, fptype *Ax, fptype *tmp)
+{
+	free(r[0]);
+	free(r[1]);
+	free(r[2]);
+	free_sd_matrices(p, Ap, Ax);
+	free(tmp);
 }
 
 
