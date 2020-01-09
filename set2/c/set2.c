@@ -31,7 +31,7 @@
 
 // #define  PRINT_INPUT_MATRICES
 #define  PRINT_RESULTS
-#define  PRINT_TOFILE
+// #define  PRINT_TOFILE
 
 #if 1
 	#define FPTYPE_DOUBLE
