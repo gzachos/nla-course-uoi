@@ -27,7 +27,7 @@
 
 #define BUFF_SIZE      16
 #define NUM_METHODS    2
-#define MAX_ERROR      0.0005
+#define MAX_ERROR      0.00005
 
 // #define  PRINT_INPUT_MATRICES
 #define  PRINT_RESULTS
@@ -420,11 +420,7 @@ fptype *steepest_descent(fptype **A, fptype *b, fptype max_error, int n)
 		// a_k = (r^(k-1), r^(k-1)) / (Ar, r^(k-1))
 		a  = dot_product(r, r, n) / dot_product(Ar, r, n);
 		// x^(k) = x^(k-1) + a_k * r^(k-1)
-#ifndef OPTIMIZED
-		x  = add_vectors(x, x, scalar_vector_multiplication(r, a, r, n), n);
-#else
 		x  = add_vectors(x, x, scalar_vector_multiplication(tmp, a, r, n), n);
-#endif
 		// Ax = A * x^(k)
 		Ax = matrix_vector_multiplication(Ax, A, x, n);
 #ifndef OPTIMIZED
