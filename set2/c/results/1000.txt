@@ -1,0 +1,25 @@
+N = 1000
+
+######################
+# System: No.1       #
+######################
+
+# Method: Steepest Descent
+
+k = 25739
+
+# Method: Conjugate Gradient
+
+k = 991
+
+######################
+# System: No.2       #
+######################
+
+# Method: Steepest Descent
+
+k = 82
+
+# Method: Conjugate Gradient
+
+k = 20
