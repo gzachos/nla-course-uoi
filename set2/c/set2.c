@@ -481,8 +481,13 @@ fptype *conjugate_gradient(fptype **A, fptype *b, fptype max_error, int n)
 		x = add_vectors(x, x, scalar_vector_multiplication(tmp, a_k, p, n), n);
 		// Ax = A * x^(k)
 		Ax = matrix_vector_multiplication(Ax, A, x, n);
+#ifndef OPTIMIZED
 		// r^(k) = b - Ax
 		r[2] = subtract_vectors(r[2], b, Ax, n);
+#else
+		// r^(k) = r^(k-1) - a_k * Ap
+		r[2] = subtract_vectors(r[2], r[1], scalar_vector_multiplication(Ap, a_k, Ap, n), n);
+#endif
 		// Shift left r[i] in a round-robin manner
 		tmp_ptr = r[0];
 		r[0] = r[1];
