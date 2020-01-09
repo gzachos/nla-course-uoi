@@ -49,7 +49,7 @@ typedef enum {STEEPEST_DESCENT, CONJUGATE_GRADIENT} method_id;
 int       alloc_matrices(fptype ***a1, fptype ***a2, fptype **b1, fptype **b2,
 		int n);
 int       alloc_sd_matrices(fptype **x, fptype **r, fptype **Ar, fptype **Ax,
-		int n);
+		fptype **tmp, int n);
 int       alloc_cg_matrices(fptype **x, fptype **r, fptype **p, fptype **Ap,
 		fptype **Ax, fptype **tmp, int n);
 fptype  **alloc_2d_matrix(int n);
@@ -70,7 +70,7 @@ fptype   *add_vectors(fptype *res, fptype *v1, fptype *v2, int n);
 fptype   *subtract_vectors(fptype *res, fptype *v1, fptype *v2, int n);
 void      free_matrices(fptype **a1, fptype **a2, fptype *b1, fptype *b2,
 		int n, dealloc_level level);
-void      free_sd_matrices(fptype *r, fptype *Ar, fptype *Ax);
+void      free_sd_matrices(fptype *r, fptype *Ar, fptype *Ax, fptype *tmp);
 void      free_cg_matrices(fptype **r, fptype *p, fptype *Ap, fptype *Ax,
 		fptype *tmp);
 void      free_2d_matrix(fptype **mat, int n);
@@ -154,8 +154,7 @@ int alloc_matrices(fptype ***a1, fptype ***a2, fptype **b1, fptype **b2, int n)
 	return EXIT_SUCCESS;
 }
 
-
-int alloc_sd_matrices(fptype **x, fptype **r, fptype **Ar, fptype **Ax, int n)
+int alloc_sd_matrices(fptype **x, fptype **r, fptype **Ar, fptype **Ax, fptype **tmp, int n)
 {
 	if (!(*x = alloc_1d_matrix(n)))
 		return EXIT_FAILURE;
@@ -181,6 +180,15 @@ int alloc_sd_matrices(fptype **x, fptype **r, fptype **Ar, fptype **Ax, int n)
 		return EXIT_FAILURE;
 	}
 
+	if (!(*tmp = alloc_1d_matrix(n)))
+	{
+		free(*x);
+		free(*x);
+		free(*Ar);
+		free(*Ax);
+		return EXIT_FAILURE;
+	}
+
 	return EXIT_SUCCESS;
 }
 
@@ -190,19 +198,15 @@ int alloc_cg_matrices(fptype **x, fptype **r, fptype **p, fptype **Ap,
 {
 	int i, j;
 
-	if (alloc_sd_matrices(x, tmp, Ap, Ax, n) != 0)
+	if (alloc_sd_matrices(x, p, Ap, Ax, tmp, n) != 0)
 		return EXIT_FAILURE;
-
-	if (!(*p = alloc_1d_matrix(n)))
-	{
-		return EXIT_FAILURE;
-	}
 
 	for (i = 0; i < 3; i++)
 	{
 		if (!(r[i] = alloc_1d_matrix(n)))
 		{
 			free(*x);
+			free(*p);
 			free(*Ap);
 			free(*Ax);
 			free(*tmp);
@@ -400,9 +404,9 @@ void solve_system(fptype **a, fptype *b, int n, sys_id sid)
 fptype *steepest_descent(fptype **A, fptype *b, fptype max_error, int n)
 {
 	int k;
-	fptype *x, *r, *Ar, *Ax, a;
+	fptype *x, *r, *Ar, *Ax, *tmp, a;
 
-	if (alloc_sd_matrices(&x, &r, &Ar, &Ax, n) != 0)
+	if (alloc_sd_matrices(&x, &r, &Ar, &Ax, &tmp, n) != 0)
 		return NULL;
 
 	// Vector x^(0) is already the zero vector
@@ -413,19 +417,28 @@ fptype *steepest_descent(fptype **A, fptype *b, fptype max_error, int n)
 		k++;
 		// Ar = A * r^(k-1)
 		Ar = matrix_vector_multiplication(Ar, A, r, n);
-		// a = (r^(k-1), r^(k-1)) / (Ar, r^(k-1))
+		// a_k = (r^(k-1), r^(k-1)) / (Ar, r^(k-1))
 		a  = dot_product(r, r, n) / dot_product(Ar, r, n);
-		// x^(k) = x^(k-1) + a * r^(k-1)
+		// x^(k) = x^(k-1) + a_k * r^(k-1)
+#ifndef OPTIMIZED
 		x  = add_vectors(x, x, scalar_vector_multiplication(r, a, r, n), n);
+#else
+		x  = add_vectors(x, x, scalar_vector_multiplication(tmp, a, r, n), n);
+#endif
 		// Ax = A * x^(k)
 		Ax = matrix_vector_multiplication(Ax, A, x, n);
+#ifndef OPTIMIZED
 		// r^(k) = b - Ax
 		r  = subtract_vectors(r, b, Ax, n);
+#else
+		// r^(k) = r^(k-1) - a_k * Ar
+		r  = subtract_vectors(r, r, scalar_vector_multiplication(Ar, a, Ar, n), n);
+#endif
 	}
 
 	printf("\nk = %d\n", k);
 
-	free_sd_matrices(r, Ar, Ax);
+	free_sd_matrices(r, Ar, Ax, tmp);
 
 	return x;
 }
@@ -607,11 +620,12 @@ void free_matrices(fptype **a1, fptype **a2, fptype *b1, fptype *b2,
 }
 
 
-void free_sd_matrices(fptype *r, fptype *Ar, fptype *Ax)
+void free_sd_matrices(fptype *r, fptype *Ar, fptype *Ax, fptype *tmp)
 {
 	free(r);
 	free(Ar);
 	free(Ax);
+	free(tmp);
 }
 
 
@@ -620,8 +634,7 @@ void free_cg_matrices(fptype **r, fptype *p, fptype *Ap, fptype *Ax, fptype *tmp
 	free(r[0]);
 	free(r[1]);
 	free(r[2]);
-	free_sd_matrices(p, Ap, Ax);
-	free(tmp);
+	free_sd_matrices(p, Ap, Ax, tmp);
 }
 
 
