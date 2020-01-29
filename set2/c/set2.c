@@ -22,6 +22,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <stdarg.h>
 #include <errno.h>
 #include <math.h>
 
@@ -68,11 +69,8 @@ fptype   *matrix_vector_multiplication(fptype *res, fptype **mat, fptype *v,
 fptype   *scalar_vector_multiplication(fptype *res, fptype s, fptype *v, int n);
 fptype   *add_vectors(fptype *res, fptype *v1, fptype *v2, int n);
 fptype   *subtract_vectors(fptype *res, fptype *v1, fptype *v2, int n);
-void      free_matrices(fptype **a1, fptype **a2, fptype *b1, fptype *b2,
-		int n, dealloc_level level);
-void      free_sd_matrices(fptype *r, fptype *Ar, fptype *Ax, fptype *tmp);
-void      free_cg_matrices(fptype **r, fptype *p, fptype *Ap, fptype *Ax,
-		fptype *tmp);
+void      free_1d_matrices(int num_args, ...);
+void      free_2d_matrices(int n, int num_args, ...);
 void      free_2d_matrix(fptype **mat, int n);
 
 /* Global data */
@@ -122,7 +120,8 @@ int main(int argc, char **argv)
 	solve_system(a1, b1, n, S1);
 	solve_system(a2, b2, n, S2);
 
-	free_matrices(a1, a2, b1, b2, n, ALL);
+	free_2d_matrices(n, 2, a1, a2);
+	free_1d_matrices(2, b1, b2);
 
 	return EXIT_SUCCESS;
 }
@@ -135,24 +134,26 @@ int alloc_matrices(fptype ***a1, fptype ***a2, fptype **b1, fptype **b2, int n)
 
 	if (!(*a2 = alloc_2d_matrix(n)))
 	{
-		free_matrices(*a1, *a2, *b1, *b2, n, A1);
+		free_2d_matrix(*a1, n);
 		return EXIT_FAILURE;
 	}
 
 	if (!(*b1 = alloc_1d_matrix(n)))
 	{
-		free_matrices(*a1, *a2, *b1, *b2, n, A2);
+		free_2d_matrices(n, 2, *a1, *a2);
 		return EXIT_FAILURE;
 	}
 
 	if (!(*b2 = alloc_1d_matrix(n)))
 	{
-		free_matrices(*a1, *a2, *b1, *b2, n, B1);
+		free_2d_matrices(n, 2, *a1, *a2);
+		free(*b1);
 		return EXIT_FAILURE;
 	}
 
 	return EXIT_SUCCESS;
 }
+
 
 int alloc_sd_matrices(fptype **x, fptype **r, fptype **Ar, fptype **Ax, fptype **tmp, int n)
 {
@@ -167,25 +168,19 @@ int alloc_sd_matrices(fptype **x, fptype **r, fptype **Ar, fptype **Ax, fptype *
 
 	if (!(*Ar = alloc_1d_matrix(n)))
 	{
-		free(*x);
-		free(*r);
+		free_1d_matrices(2, *x, *r);
 		return EXIT_FAILURE;
 	}
 
 	if (!(*Ax = alloc_1d_matrix(n)))
 	{
-		free(*x);
-		free(*x);
-		free(*Ar);
+		free_1d_matrices(3, *x, *r, *Ar);
 		return EXIT_FAILURE;
 	}
 
 	if (!(*tmp = alloc_1d_matrix(n)))
 	{
-		free(*x);
-		free(*x);
-		free(*Ar);
-		free(*Ax);
+		free_1d_matrices(4, *x, *r, *Ar, *Ax);
 		return EXIT_FAILURE;
 	}
 
@@ -205,13 +200,10 @@ int alloc_cg_matrices(fptype **x, fptype **r, fptype **p, fptype **Ap,
 	{
 		if (!(r[i] = alloc_1d_matrix(n)))
 		{
-			free(*x);
-			free(*p);
-			free(*Ap);
-			free(*Ax);
-			free(*tmp);
+			free_1d_matrices(5, *x, *p, *Ap, *Ax, *tmp);
 			for (j = 0; j < i; j++)
 				free(r[j]);
+
 			return EXIT_FAILURE;
 		}
 	}
@@ -434,7 +426,7 @@ fptype *steepest_descent(fptype **A, fptype *b, fptype max_error, int n)
 
 	printf("\nk = %d\n", k);
 
-	free_sd_matrices(r, Ar, Ax, tmp);
+	free_1d_matrices(4, r, Ar, Ax, tmp);
 
 	return x;
 }
@@ -493,7 +485,7 @@ fptype *conjugate_gradient(fptype **A, fptype *b, fptype max_error, int n)
 
 	printf("\nk = %d\n", k);
 
-	free_cg_matrices(r, p, Ap, Ax, tmp);
+	free_1d_matrices(7, r[0], r[1], r[2], p, Ap, Ax, tmp);
 
 	return x;
 }
@@ -604,38 +596,35 @@ fptype *subtract_vectors(fptype *res, fptype *v1, fptype *v2, int n)
 }
 
 
-void free_matrices(fptype **a1, fptype **a2, fptype *b1, fptype *b2,
-		int n, dealloc_level level)
+void free_1d_matrices(int num_args, ...)
 {
-	switch (level)
+	va_list args;
+	fptype *ptr;
+	int i;
+
+	va_start(args, num_args);
+	for (i = 0; i < num_args; i++)
 	{
-		case ALL:
-			free(b2);
-		case B1:
-			free(b1);
-		case A2:
-			free_2d_matrix(a2, n);
-		case A1:
-			free_2d_matrix(a1, n);
+		ptr = va_arg(args, fptype *);
+		free(ptr);
 	}
+	va_end(args);
 }
 
 
-void free_sd_matrices(fptype *r, fptype *Ar, fptype *Ax, fptype *tmp)
+void free_2d_matrices(int n, int num_args, ...)
 {
-	free(r);
-	free(Ar);
-	free(Ax);
-	free(tmp);
-}
+	va_list args;
+	fptype **ptr;
+	int i;
 
-
-void free_cg_matrices(fptype **r, fptype *p, fptype *Ap, fptype *Ax, fptype *tmp)
-{
-	free(r[0]);
-	free(r[1]);
-	free(r[2]);
-	free_sd_matrices(p, Ap, Ax, tmp);
+	va_start(args, num_args);
+	for (i = 0; i < num_args; i++)
+	{
+		ptr = va_arg(args, fptype **);
+		free_2d_matrix(ptr, n);
+	}
+	va_end(args);
 }
 
 
