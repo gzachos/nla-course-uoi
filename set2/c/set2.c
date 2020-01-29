@@ -42,17 +42,12 @@
 	typedef float fptype;
 #endif
 
-typedef enum {A1, A2, B1, ALL} dealloc_level;
 typedef enum {S1=1, S2} sys_id;
 typedef enum {STEEPEST_DESCENT, CONJUGATE_GRADIENT} method_id;
 
 /* Function Prototypes */
-int       alloc_matrices(fptype ***a1, fptype ***a2, fptype **b1, fptype **b2,
-		int n);
-int       alloc_sd_matrices(fptype **x, fptype **r, fptype **Ar, fptype **Ax,
-		fptype **tmp, int n);
-int       alloc_cg_matrices(fptype **x, fptype **r, fptype **p, fptype **Ap,
-		fptype **Ax, fptype **tmp, int n);
+int       alloc_2d_matrices(int n, int num_args, ...);
+int       alloc_1d_matrices(int n, int num_args, ...);
 fptype  **alloc_2d_matrix(int n);
 fptype   *alloc_1d_matrix(int n);
 void      init_matrices(fptype **a1, fptype **a2, fptype *b1, fptype *b2, int n);
@@ -106,7 +101,8 @@ int main(int argc, char **argv)
 	else
 		printf("N = %d\n", n);
 
-	if (alloc_matrices(&a1, &a2, &b1, &b2, n) != 0)
+	if (alloc_1d_matrices(n, 2, &b1, &b2) != 0 ||
+			alloc_2d_matrices(n, 2, &a1, &a2))
 		return EXIT_FAILURE;
 
 	/* Initialize matrices */
@@ -127,87 +123,58 @@ int main(int argc, char **argv)
 }
 
 
-int alloc_matrices(fptype ***a1, fptype ***a2, fptype **b1, fptype **b2, int n)
+int alloc_1d_matrices(int n, int num_args, ...)
 {
-	if (!(*a1 = alloc_2d_matrix(n)))
-		return EXIT_FAILURE;
-
-	if (!(*a2 = alloc_2d_matrix(n)))
-	{
-		free_2d_matrix(*a1, n);
-		return EXIT_FAILURE;
-	}
-
-	if (!(*b1 = alloc_1d_matrix(n)))
-	{
-		free_2d_matrices(n, 2, *a1, *a2);
-		return EXIT_FAILURE;
-	}
-
-	if (!(*b2 = alloc_1d_matrix(n)))
-	{
-		free_2d_matrices(n, 2, *a1, *a2);
-		free(*b1);
-		return EXIT_FAILURE;
-	}
-
-	return EXIT_SUCCESS;
-}
-
-
-int alloc_sd_matrices(fptype **x, fptype **r, fptype **Ar, fptype **Ax, fptype **tmp, int n)
-{
-	if (!(*x = alloc_1d_matrix(n)))
-		return EXIT_FAILURE;
-
-	if (!(*r = alloc_1d_matrix(n)))
-	{
-		free(*x);
-		return EXIT_FAILURE;
-	}
-
-	if (!(*Ar = alloc_1d_matrix(n)))
-	{
-		free_1d_matrices(2, *x, *r);
-		return EXIT_FAILURE;
-	}
-
-	if (!(*Ax = alloc_1d_matrix(n)))
-	{
-		free_1d_matrices(3, *x, *r, *Ar);
-		return EXIT_FAILURE;
-	}
-
-	if (!(*tmp = alloc_1d_matrix(n)))
-	{
-		free_1d_matrices(4, *x, *r, *Ar, *Ax);
-		return EXIT_FAILURE;
-	}
-
-	return EXIT_SUCCESS;
-}
-
-
-int alloc_cg_matrices(fptype **x, fptype **r, fptype **p, fptype **Ap,
-		fptype **Ax, fptype **tmp, int n)
-{
+	va_list args;
+	fptype ***ptr;
 	int i, j;
 
-	if (alloc_sd_matrices(x, p, Ap, Ax, tmp, n) != 0)
+	if (!(ptr = (fptype ***) malloc(num_args * sizeof(fptype **))))
 		return EXIT_FAILURE;
 
-	for (i = 0; i < 3; i++)
+	va_start(args, num_args);
+	for (i = 0; i < num_args; i++)
 	{
-		if (!(r[i] = alloc_1d_matrix(n)))
+		ptr[i] = va_arg(args, fptype **);
+		if (!(*ptr[i] = alloc_1d_matrix(n)))
 		{
-			free_1d_matrices(5, *x, *p, *Ap, *Ax, *tmp);
 			for (j = 0; j < i; j++)
-				free(r[j]);
-
+				free(*ptr[j]);
+			free(ptr);
+			va_end(args);
 			return EXIT_FAILURE;
 		}
 	}
+	free(ptr);
+	va_end(args);
+	return EXIT_SUCCESS;
+}
 
+
+int alloc_2d_matrices(int n, int num_args, ...)
+{
+	va_list args;
+	fptype ****ptr;
+	int i, j;
+
+	if (!(ptr = (fptype ****) malloc(num_args * sizeof(fptype ***))))
+		return EXIT_FAILURE;
+
+	va_start(args, num_args);
+	for (i = 0; i < num_args; i++)
+	{
+		ptr[i] = va_arg(args, fptype ***);
+		if (!(*ptr[i] = alloc_2d_matrix(n)))
+		{
+			for (j = 0; j < i; j++)
+				free_2d_matrix(*ptr[j], n);
+			free(ptr);
+			va_end(args);
+			return EXIT_FAILURE;
+		}
+	}
+	free(ptr);
+	va_end(args);
 	return EXIT_SUCCESS;
 }
 
@@ -398,7 +365,7 @@ fptype *steepest_descent(fptype **A, fptype *b, fptype max_error, int n)
 	int k;
 	fptype *x, *r, *Ar, *Ax, *tmp, a;
 
-	if (alloc_sd_matrices(&x, &r, &Ar, &Ax, &tmp, n) != 0)
+	if (alloc_1d_matrices(n, 5, &x, &r, &Ar, &Ax, &tmp) != 0)
 		return NULL;
 
 	// Vector x^(0) is already the zero vector
@@ -437,7 +404,7 @@ fptype *conjugate_gradient(fptype **A, fptype *b, fptype max_error, int n)
 	int k;
 	fptype *x, *r[3], *p, a_k, b_k, *Ap, *Ax, *tmp, *tmp_ptr;
 
-	if (alloc_cg_matrices(&x, r, &p, &Ap, &Ax, &tmp, n) != 0)
+	if (alloc_1d_matrices(n, 8, &x, r, r+1, r+2, &p, &Ap, &Ax, &tmp) != 0)
 		return NULL;
 
 	// Vector x^(0) is already the zero vector
