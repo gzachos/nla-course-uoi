@@ -1,7 +1,7 @@
-# Steepest Descent and Conjugate Gradient methods
+# Steepest Descent and Conjugate Gradients methods
 
 ## About
-In this project, the Steepest Descent and Conjugate Gradient methods were implemented for solving the following linear systems:
+In this project, the Steepest Descent and Conjugate Gradients methods were implemented for solving the following linear systems:
   * _A_<sub>1</sub>_x_ = _b_<sub>1</sub>
   * _A_<sub>2</sub>_x_ = _b_<sub>2</sub>
  

@@ -5,7 +5,7 @@ Project for the Numerical Linear Algebra course @{cse.uoi.gr, math.uoi.gr}
 [Cholesky Decomposition](set1)
 
 ## Exercise #2
-[Steepest Descent and Conjugate Gradient methods](set2)
+[Steepest Descent and Conjugate Gradients methods](set2)
 
 ## Developer
 [George Z. Zachos](https://gzachos.com)

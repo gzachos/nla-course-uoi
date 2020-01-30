@@ -44,7 +44,6 @@
 #endif
 
 typedef enum {S1=1, S2} sys_id;
-typedef enum {STEEPEST_DESCENT, CONJUGATE_GRADIENT} method_id;
 
 /* Function Prototypes */
 int       alloc_2d_matrices(int n, int num_args, ...);
@@ -57,7 +56,7 @@ void      write_1d_matrix(char *filename, fptype *mat, int n);
 void      print_input_matrices(void);
 void      solve_system(fptype **a, fptype *b, int n, sys_id sid);
 fptype   *steepest_descent(fptype **A, fptype *b, fptype max_error, int n);
-fptype   *conjugate_gradient(fptype **A, fptype *b, fptype max_error, int n);
+fptype   *conjugate_gradients(fptype **A, fptype *b, fptype max_error, int n);
 fptype    euclidean_norm(fptype *v, int n);
 fptype    dot_product(fptype *v1, fptype *v2, int n);
 fptype   *matrix_vector_multiplication(fptype *res, fptype **mat, fptype *v,
@@ -72,7 +71,7 @@ void      free_2d_matrix(fptype **mat, int n);
 /* Global data */
 fptype *(*methods[NUM_METHODS])(fptype **A, fptype *b, fptype max_error, int n) = {
 	steepest_descent,
-	conjugate_gradient
+	conjugate_gradients
 };
 
 char    *method_names[NUM_METHODS] = {"Steepest Descent", "Conjugate Gradient"};
@@ -415,7 +414,7 @@ fptype *steepest_descent(fptype **A, fptype *b, fptype max_error, int n)
 }
 
 
-fptype *conjugate_gradient(fptype **A, fptype *b, fptype max_error, int n)
+fptype *conjugate_gradients(fptype **A, fptype *b, fptype max_error, int n)
 {
 	int k, j_retval;
 	fptype *x, *r[3], *p, a_k, b_k, *Ap, *Ax, *tmp, *tmp_ptr;
