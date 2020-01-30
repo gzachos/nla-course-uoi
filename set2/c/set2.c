@@ -23,6 +23,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdarg.h>
+#include <setjmp.h>
 #include <errno.h>
 #include <math.h>
 
@@ -74,8 +75,9 @@ fptype *(*methods[NUM_METHODS])(fptype **A, fptype *b, fptype max_error, int n) 
 	conjugate_gradient
 };
 
-char *method_names[NUM_METHODS] = {"Steepest Descent", "Conjugate Gradient"};
-char *method_initials[NUM_METHODS] = {"sd", "cg"};
+char    *method_names[NUM_METHODS] = {"Steepest Descent", "Conjugate Gradient"};
+char    *method_initials[NUM_METHODS] = {"sd", "cg"};
+jmp_buf  j_error_env;
 
 
 int main(int argc, char **argv)
@@ -130,7 +132,10 @@ int alloc_1d_matrices(int n, int num_args, ...)
 	int i, j;
 
 	if (!(ptr = (fptype ***) malloc(num_args * sizeof(fptype **))))
+	{
+		perror("malloc");
 		return EXIT_FAILURE;
+	}
 
 	va_start(args, num_args);
 	for (i = 0; i < num_args; i++)
@@ -158,7 +163,10 @@ int alloc_2d_matrices(int n, int num_args, ...)
 	int i, j;
 
 	if (!(ptr = (fptype ****) malloc(num_args * sizeof(fptype ***))))
+	{
+		perror("malloc");
 		return EXIT_FAILURE;
+	}
 
 	va_start(args, num_args);
 	for (i = 0; i < num_args; i++)
@@ -347,7 +355,7 @@ void solve_system(fptype **a, fptype *b, int n, sys_id sid)
 	{
 		printf("\n# Method: %s\n", method_names[i]);
 		if (!(x = (methods[i])(a, b, MAX_ERROR, n)))
-			return;
+			continue;
 #ifdef PRINT_RESULTS
 	#ifndef PRINT_TOFILE
 		printf("\nWriting X%d...\n", sid);
@@ -362,11 +370,19 @@ void solve_system(fptype **a, fptype *b, int n, sys_id sid)
 
 fptype *steepest_descent(fptype **A, fptype *b, fptype max_error, int n)
 {
-	int k;
+	int k, j_retval;
 	fptype *x, *r, *Ar, *Ax, *tmp, a;
 
 	if (alloc_1d_matrices(n, 5, &x, &r, &Ar, &Ax, &tmp) != 0)
 		return NULL;
+
+	if ((j_retval = setjmp(j_error_env)) != 0)
+	{
+		fprintf(stderr, "Aborting Steepest Descent execution"
+				" (exit code: %d)...\n", j_retval);
+		free_1d_matrices(5, x, r, Ar, Ax, tmp);
+		return NULL;
+	}
 
 	// Vector x^(0) is already the zero vector
 	memcpy(r, b, n*sizeof(fptype)); // r^(0) = b;
@@ -401,11 +417,19 @@ fptype *steepest_descent(fptype **A, fptype *b, fptype max_error, int n)
 
 fptype *conjugate_gradient(fptype **A, fptype *b, fptype max_error, int n)
 {
-	int k;
+	int k, j_retval;
 	fptype *x, *r[3], *p, a_k, b_k, *Ap, *Ax, *tmp, *tmp_ptr;
 
 	if (alloc_1d_matrices(n, 8, &x, r, r+1, r+2, &p, &Ap, &Ax, &tmp) != 0)
 		return NULL;
+
+	if ((j_retval = setjmp(j_error_env)) != 0)
+	{
+		fprintf(stderr, "Aborting Conjugate Gradient execution"
+				" (exit code: %d)...\n", j_retval);
+		free_1d_matrices(8, x, r[0], r[1], r[2], p, Ap, Ax, tmp);
+		return NULL;
+	}
 
 	// Vector x^(0) is already the zero vector
 	memcpy(r[0], b, n*sizeof(fptype)); // r^(0) = b;
@@ -466,6 +490,8 @@ fptype euclidean_norm(fptype *v, int n)
 	if (!v)
 	{
 		fprintf(stderr, "euclidean_norm: argument is NULL!\n");
+		longjmp(j_error_env, 1);
+		// This LOC should never be reached!
 		return -1;
 	}
 
@@ -486,8 +512,9 @@ fptype dot_product(fptype *v1, fptype *v2, int n)
 
 	if (!v1 || !v2)
 	{
-		fprintf(stderr, "euclidean_norm: argument is NULL!\n");
-		// TODO longjmp
+		fprintf(stderr, "dot_product: argument is NULL!\n");
+		longjmp(j_error_env, 2);
+		// This LOC should never be reached!
 		return -1;
 	}
 
@@ -503,7 +530,12 @@ fptype *matrix_vector_multiplication(fptype *res, fptype **mat, fptype *v, int n
 	int i, j, lb, ub;
 
 	if (!res || !mat || !v)
+	{
+		fprintf(stderr, "matrix_vector_multiplication: argument is NULL!\n");
+		longjmp(j_error_env, 3);
+		// This LOC should never be reached!
 		return NULL;
+	}
 
 	for (i = 0; i < n; i++)
 	{
@@ -526,7 +558,12 @@ fptype *scalar_vector_multiplication(fptype *res, fptype s, fptype *v, int n)
 	int i;
 
 	if (!res || !v)
+	{
+		fprintf(stderr, "scalar_vector_multiplication: argument is NULL!\n");
+		longjmp(j_error_env, 4);
+		// This LOC should never be reached!
 		return NULL;
+	}
 
 	for (i = 0; i < n; i++)
 		res[i] = v[i] * s;
@@ -540,7 +577,12 @@ fptype *add_vectors(fptype *res, fptype *v1, fptype *v2, int n)
 	int i;
 
 	if (!res || !v1 || !v2)
+	{
+		fprintf(stderr, "add_vectors: argument is NULL!\n");
+		longjmp(j_error_env, 5);
+		// This LOC should never be reached!
 		return NULL;
+	}
 
 	for (i = 0; i < n; i++)
 		res[i] = v1[i] + v2[i];
@@ -554,7 +596,12 @@ fptype *subtract_vectors(fptype *res, fptype *v1, fptype *v2, int n)
 	int i;
 
 	if (!res || !v1 || !v2)
+	{
+		fprintf(stderr, "subtract_vectors: argument is NULL!\n");
+		longjmp(j_error_env, 6);
+		// This LOC should never be reached!
 		return NULL;
+	}
 
 	for (i = 0; i < n; i++)
 		res[i] = v1[i] - v2[i];
