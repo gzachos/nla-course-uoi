@@ -1,5 +1,5 @@
 # nla-course-uoi
-Project for the Numerical Linear Algebra course @cse.uoi.gr
+Project for the Numerical Linear Algebra course @{cse.uoi.gr, math.uoi.gr}
 
 ## Exercise #1
 [Cholesky Decomposition](set1)
