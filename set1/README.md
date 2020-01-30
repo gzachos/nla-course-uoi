@@ -13,7 +13,7 @@ In the context of this exercise, single-precision floating-point arithmetic was 
 the two linear systems in terms of precision, as _n_ takes value in {100, 1000, 10000}.
 
 The purpose of this project was also to achieve the minimum time complexity for this specific form of input matrices
-_A_<sub>1</sub>, _A_<sub>2</sub>, _b_<sub>1</sub> and _b_<sub>2</sub>.
+_A_<sub>1</sub>, _A_<sub>2</sub>, _b_<sub>1</sub> and _b_<sub>2</sub>, taking into account that _A_<sub>1</sub> and _A_<sub>2</sub> are [pentadiagonal matrices](https://en.wikipedia.org/wiki/Pentadiagonal_matrix).
 
 ## Implementation details
 The project was implemented in both Octave and C language.
