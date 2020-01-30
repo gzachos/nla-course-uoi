@@ -4,8 +4,8 @@ set terminal pngcairo enhanced font "arial,11" fontscale 1.0
 set output 'results.png'
 set bar 1.000000 front
 set title 'Method Comparison'
-set xlabel "N"
-set ylabel "K"
+set xlabel "Array Size"
+set ylabel "Number of Iterations"
 set xrange [90:11000]
 set logscale x 10
 set logscale y 10
