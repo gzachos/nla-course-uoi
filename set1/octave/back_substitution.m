@@ -1,5 +1,5 @@
 function [Y] = back_substitution(L,B,n)
-	Y = zeros(10,1,"single");
+	Y = zeros(n,1,"single");
 
 	for i = n:-1:1
 		tmp_sum = 0.0;
